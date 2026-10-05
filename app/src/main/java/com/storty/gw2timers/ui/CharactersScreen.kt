@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,12 +19,26 @@ import androidx.compose.ui.unit.sp
 import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.Character
 
+// Список классов GW2
+val GW2_CLASSES = listOf(
+    "Ranger",
+    "Thief",
+    "Engineer",
+    "Elementalist",
+    "Mesmer",
+    "Necromancer",
+    "Warrior",
+    "Guardian",
+    "Revenant"
+)
+
 @Composable
 fun CharactersScreen(
     state: AppState,
     onStateChange: (AppState) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingCharacter by remember { mutableStateOf<Character?>(null) }
     var selectedCharacter by remember { mutableStateOf<Character?>(null) }
 
     if (selectedCharacter != null) {
@@ -56,7 +72,15 @@ fun CharactersScreen(
                 items(state.characters) { character ->
                     CharacterBlock(
                         character = character,
-                        onClick = { selectedCharacter = character }
+                        onClick = { selectedCharacter = character },
+                        onEdit = { editingCharacter = character },
+                        onDelete = {
+                            onStateChange(
+                                state.copy(
+                                    characters = state.characters.filter { it.id != character.id }
+                                )
+                            )
+                        }
                     )
                 }
             }
@@ -64,11 +88,29 @@ fun CharactersScreen(
     }
 
     if (showAddDialog) {
-        AddCharacterDialog(
+        CharacterDialog(
+            existing = null,
             onDismiss = { showAddDialog = false },
             onConfirm = { newCharacter ->
                 onStateChange(state.copy(characters = state.characters + newCharacter))
                 showAddDialog = false
+            }
+        )
+    }
+
+    if (editingCharacter != null) {
+        CharacterDialog(
+            existing = editingCharacter,
+            onDismiss = { editingCharacter = null },
+            onConfirm = { updated ->
+                onStateChange(
+                    state.copy(
+                        characters = state.characters.map {
+                            if (it.id == updated.id) updated else it
+                        }
+                    )
+                )
+                editingCharacter = null
             }
         )
     }
@@ -77,7 +119,9 @@ fun CharactersScreen(
 @Composable
 fun CharacterBlock(
     character: Character,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -86,67 +130,90 @@ fun CharacterBlock(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(character.color))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                character.name,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                character.className,
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.85f)
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    character.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    character.className,
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+            }
+            TextButton(onClick = onEdit) {
+                Text("✏️", fontSize = 18.sp)
+            }
+            TextButton(onClick = onDelete) {
+                Text("🗑", fontSize = 18.sp)
+            }
         }
     }
 }
 
+// Диалог создания/редактирования персонажа
 @Composable
-fun AddCharacterDialog(
+fun CharacterDialog(
+    existing: Character?,
     onDismiss: () -> Unit,
     onConfirm: (Character) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var className by remember { mutableStateOf("") }
-    var color by remember { mutableStateOf(0xFF2196F3.toInt()) }
+    var name by remember { mutableStateOf(existing?.name ?: "") }
+    var className by remember { mutableStateOf(existing?.className ?: GW2_CLASSES[0]) }
+    var color by remember { mutableStateOf(existing?.color ?: 0xFF2196F3.toInt()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новый персонаж") },
+        title = { Text(if (existing == null) "Новый персонаж" else "Редактировать персонажа") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Имя") }
+                    label = { Text("Имя") },
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = className,
-                    onValueChange = { className = it },
-                    label = { Text("Класс") }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Цвет:")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val colors = listOf(
-                        0xFF4CAF50.toInt(),
-                        0xFF2196F3.toInt(),
-                        0xFFFF9800.toInt(),
-                        0xFFE91E63.toInt(),
-                        0xFF9C27B0.toInt()
-                    )
-                    colors.forEach { c ->
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(Color(c), RoundedCornerShape(50))
-                                .clickable { color = c }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Класс:", fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Список классов
+                GW2_CLASSES.forEach { cls ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { className = cls }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = className == cls,
+                            onClick = { className = cls }
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(cls)
                     }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Цвет:", fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(4.dp))
+                ColorPalette(
+                    selected = color,
+                    onSelect = { color = it }
+                )
             }
         },
         confirmButton = {
@@ -155,17 +222,72 @@ fun AddCharacterDialog(
                     if (name.isNotBlank()) {
                         onConfirm(
                             Character(
+                                id = existing?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name,
-                                className = className.ifBlank { "—" },
+                                className = className,
                                 color = color
                             )
                         )
                     }
                 }
-            ) { Text("Создать") }
+            ) { Text(if (existing == null) "Создать" else "Сохранить") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
         }
     )
+}
+
+// Палитра цветов — 20 штук
+@Composable
+fun ColorPalette(
+    selected: Int,
+    onSelect: (Int) -> Unit
+) {
+    val colors = listOf(
+        0xFFF44336.toInt(), // красный
+        0xFFE91E63.toInt(), // розовый
+        0xFF9C27B0.toInt(), // фиолетовый
+        0xFF673AB7.toInt(), // тёмно-фиолетовый
+        0xFF3F51B5.toInt(), // индиго
+        0xFF2196F3.toInt(), // синий
+        0xFF03A9F4.toInt(), // голубой
+        0xFF00BCD4.toInt(), // циан
+        0xFF009688.toInt(), // бирюзовый
+        0xFF4CAF50.toInt(), // зелёный
+        0xFF8BC34A.toInt(), // лаймовый
+        0xFFCDDC39.toInt(), // жёлто-зелёный
+        0xFFFFEB3B.toInt(), // жёлтый
+        0xFFFFC107.toInt(), // янтарный
+        0xFFFF9800.toInt(), // оранжевый
+        0xFFFF5722.toInt(), // тёмно-оранжевый
+        0xFF795548.toInt(), // коричневый
+        0xFF607D8B.toInt(), // сине-серый
+        0xFF9E9E9E.toInt(), // серый
+        0xFF000000.toInt()  // чёрный
+    )
+
+    // Сетка 5x4
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        colors.chunked(5).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { c ->
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(c), RoundedCornerShape(50))
+                            .clickable { onSelect(c) }
+                            .then(
+                                if (selected == c) {
+                                    Modifier.padding(2.dp)
+                                } else Modifier
+                            )
+                    )
+                    if (selected == c) {
+                        // Маркер выбора — можно добавить рамку, но для простоты оставим так
+                    }
+                }
+            }
+        }
+    }
 }
