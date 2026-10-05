@@ -8,34 +8,35 @@ import java.util.TimeZone
 
 object EventLogic {
 
-    // Возвращает время (мс) последнего выполнения ивента (любым персонажем или без)
     fun lastCompletionTime(state: AppState, eventId: String): Long? {
         return state.completions
             .filter { it.eventId == eventId }
             .maxOfOrNull { it.timestamp }
     }
 
-    // Возвращает время, когда ивент снова доступен (минимум окна)
+    // Время, когда ивент снова доступен (null если не задан перезапуск)
     fun nextAvailableTime(state: AppState, event: GameEvent): Long? {
+        val restart = event.restartMinutes ?: return null
         val last = lastCompletionTime(state, event.id) ?: return null
-        return last + event.restartMinutes * 60_000L
+        return last + restart * 60_000L
     }
 
-    // Возвращает время окончания окна (максимум)
+    // Время окончания окна (null если окно не задано)
     fun windowEndTime(state: AppState, event: GameEvent): Long? {
+        val restart = event.restartMinutes ?: return null
+        val window = event.windowMinutes ?: return null
         val last = lastCompletionTime(state, event.id) ?: return null
-        return last + (event.restartMinutes + event.windowMinutes) * 60_000L
+        return last + (restart + window) * 60_000L
     }
 
-    // Активно ли окно прямо сейчас
     fun isWindowActive(state: AppState, event: GameEvent): Boolean {
+        if (event.windowMinutes == null) return false
         val now = System.currentTimeMillis()
         val start = nextAvailableTime(state, event) ?: return false
         val end = windowEndTime(state, event) ?: return false
         return now in start..end
     }
 
-    // Делал ли персонаж этот ивент сегодня (с 00:00 UTC)
     fun didCharacterDoEventToday(state: AppState, characterId: String, eventId: String): Boolean {
         val todayStart = todayStartUtc()
         return state.completions.any {
@@ -45,12 +46,10 @@ object EventLogic {
         }
     }
 
-    // Есть ли предупреждение "2 раза подряд" для персонажа и ивента
     fun isRepeatedForCharacter(state: AppState, characterId: String, eventId: String): Boolean {
         return state.repeatedEventPerCharacter[characterId] == eventId
     }
 
-    // Отметить выполнение ивента
     fun markCompleted(
         state: AppState,
         event: GameEvent,
@@ -63,17 +62,14 @@ object EventLogic {
             timestamp = now
         )
 
-        // Обновляем логику "2 раза подряд" только если был выбран персонаж
         val newRepeated = state.repeatedEventPerCharacter.toMutableMap()
         val newLast = state.lastEventPerCharacter.toMutableMap()
 
         if (characterId != null) {
             val lastEvent = state.lastEventPerCharacter[characterId]
             if (lastEvent == event.id) {
-                // Персонаж сделал тот же ивент подряд — ставим предупреждение
                 newRepeated[characterId] = event.id
             } else {
-                // Сделал другой ивент — сбрасываем предупреждение
                 newRepeated.remove(characterId)
             }
             newLast[characterId] = event.id
@@ -86,7 +82,6 @@ object EventLogic {
         )
     }
 
-    // Начало текущего дня в UTC (00:00 UTC)
     fun todayStartUtc(): Long {
         val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
         cal.set(Calendar.HOUR_OF_DAY, 0)
