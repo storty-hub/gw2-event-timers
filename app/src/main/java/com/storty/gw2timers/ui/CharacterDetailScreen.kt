@@ -83,8 +83,8 @@ fun CharacterDetailScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
-                                Text
-                                    ("Перезапуск: ${event.restartMinutes?.let { "$it мин" } ?: "—"}",
+                                Text(
+                                    "Перезапуск: ${event.restartMinutes?.let { "$it мин" } ?: "—"}",
                                     fontSize = 13.sp,
                                     color = Color.White.copy(alpha = 0.85f)
                                 )
