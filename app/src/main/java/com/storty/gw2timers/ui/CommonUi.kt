@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -26,36 +26,37 @@ val GW2_CLASSES = listOf(
 
 // ===== Палитра цветов (20 штук) =====
 val COLOR_OPTIONS = listOf(
-    0xFFF44336.toInt(), // красный
-    0xFFE91E63.toInt(), // розовый
-    0xFF9C27B0.toInt(), // фиолетовый
-    0xFF673AB7.toInt(), // тёмно-фиолетовый
-    0xFF3F51B5.toInt(), // индиго
-    0xFF2196F3.toInt(), // синий
-    0xFF03A9F4.toInt(), // голубой
-    0xFF00BCD4.toInt(), // циан
-    0xFF009688.toInt(), // бирюзовый
-    0xFF4CAF50.toInt(), // зелёный
-    0xFF8BC34A.toInt(), // лаймовый
-    0xFFCDDC39.toInt(), // жёлто-зелёный
-    0xFFFFEB3B.toInt(), // жёлтый
-    0xFFFFC107.toInt(), // янтарный
-    0xFFFF9800.toInt(), // оранжевый
-    0xFFFF5722.toInt(), // тёмно-оранжевый
-    0xFF795548.toInt(), // коричневый
-    0xFF607D8B.toInt(), // сине-серый
-    0xFF9E9E9E.toInt(), // серый
-    0xFF000000.toInt()  // чёрный
+    0xFFF44336.toInt(),
+    0xFFE91E63.toInt(),
+    0xFF9C27B0.toInt(),
+    0xFF673AB7.toInt(),
+    0xFF3F51B5.toInt(),
+    0xFF2196F3.toInt(),
+    0xFF03A9F4.toInt(),
+    0xFF00BCD4.toInt(),
+    0xFF009688.toInt(),
+    0xFF4CAF50.toInt(),
+    0xFF8BC34A.toInt(),
+    0xFFCDDC39.toInt(),
+    0xFFFFEB3B.toInt(),
+    0xFFFFC107.toInt(),
+    0xFFFF9800.toInt(),
+    0xFFFF5722.toInt(),
+    0xFF795548.toInt(),
+    0xFF607D8B.toInt(),
+    0xFF9E9E9E.toInt(),
+    0xFF000000.toInt()
 )
 
 // ===== Выпадающее меню выбора класса =====
 @Composable
 fun ClassDropdown(
     selected: String,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var expanded = false
-    Box {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
         OutlinedButton(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth()
@@ -84,10 +85,11 @@ fun ClassDropdown(
 @Composable
 fun ColorDropdown(
     selected: Int,
-    onSelect: (Int) -> Unit
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var expanded = false
-    Box {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
         OutlinedButton(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth()
