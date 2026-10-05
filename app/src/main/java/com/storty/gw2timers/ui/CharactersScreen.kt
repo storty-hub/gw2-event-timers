@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.Character
 
-// Список классов GW2
 val GW2_CLASSES = listOf(
     "Ranger",
     "Thief",
@@ -39,6 +38,7 @@ fun CharactersScreen(
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var editingCharacter by remember { mutableStateOf<Character?>(null) }
+    var deletingCharacter by remember { mutableStateOf<Character?>(null) }
     var selectedCharacter by remember { mutableStateOf<Character?>(null) }
 
     if (selectedCharacter != null) {
@@ -74,13 +74,7 @@ fun CharactersScreen(
                         character = character,
                         onClick = { selectedCharacter = character },
                         onEdit = { editingCharacter = character },
-                        onDelete = {
-                            onStateChange(
-                                state.copy(
-                                    characters = state.characters.filter { it.id != character.id }
-                                )
-                            )
-                        }
+                        onDelete = { deletingCharacter = character }
                     )
                 }
             }
@@ -114,6 +108,24 @@ fun CharactersScreen(
             }
         )
     }
+
+    if (deletingCharacter != null) {
+        ConfirmDeleteDialog(
+            title = "Удалить персонажа?",
+            message = "«${deletingCharacter!!.name}» будет удалён. Все его отметки выполнения тоже исчезнут.",
+            onConfirm = {
+                val id = deletingCharacter!!.id
+                onStateChange(
+                    state.copy(
+                        characters = state.characters.filter { it.id != id },
+                        completions = state.completions.filter { it.characterId != id }
+                    )
+                )
+                deletingCharacter = null
+            },
+            onDismiss = { deletingCharacter = null }
+        )
+    }
 }
 
 @Composable
@@ -124,9 +136,7 @@ fun CharacterBlock(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(character.color))
     ) {
@@ -136,7 +146,11 @@ fun CharacterBlock(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onClick() }
+            ) {
                 Text(
                     character.name,
                     fontSize = 18.sp,
@@ -150,17 +164,26 @@ fun CharacterBlock(
                     color = Color.White.copy(alpha = 0.85f)
                 )
             }
-            TextButton(onClick = onEdit) {
-                Text("✏️", fontSize = 18.sp)
-            }
-            TextButton(onClick = onDelete) {
-                Text("🗑", fontSize = 18.sp)
-            }
+            Text(
+                "✏",
+                fontSize = 20.sp,
+                color = Color.White,
+                modifier = Modifier
+                    .clickable { onEdit() }
+                    .padding(8.dp)
+            )
+            Text(
+                "✕",
+                fontSize = 22.sp,
+                color = Color.White,
+                modifier = Modifier
+                    .clickable { onDelete() }
+                    .padding(8.dp)
+            )
         }
     }
 }
 
-// Диалог создания/редактирования персонажа
 @Composable
 fun CharacterDialog(
     existing: Character?,
@@ -175,9 +198,7 @@ fun CharacterDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Новый персонаж" else "Редактировать персонажа") },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -189,7 +210,6 @@ fun CharacterDialog(
                 Text("Класс:", fontWeight = FontWeight.Medium)
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Список классов
                 GW2_CLASSES.forEach { cls ->
                     Row(
                         modifier = Modifier
@@ -236,58 +256,4 @@ fun CharacterDialog(
             TextButton(onClick = onDismiss) { Text("Отмена") }
         }
     )
-}
-
-// Палитра цветов — 20 штук
-@Composable
-fun ColorPalette(
-    selected: Int,
-    onSelect: (Int) -> Unit
-) {
-    val colors = listOf(
-        0xFFF44336.toInt(), // красный
-        0xFFE91E63.toInt(), // розовый
-        0xFF9C27B0.toInt(), // фиолетовый
-        0xFF673AB7.toInt(), // тёмно-фиолетовый
-        0xFF3F51B5.toInt(), // индиго
-        0xFF2196F3.toInt(), // синий
-        0xFF03A9F4.toInt(), // голубой
-        0xFF00BCD4.toInt(), // циан
-        0xFF009688.toInt(), // бирюзовый
-        0xFF4CAF50.toInt(), // зелёный
-        0xFF8BC34A.toInt(), // лаймовый
-        0xFFCDDC39.toInt(), // жёлто-зелёный
-        0xFFFFEB3B.toInt(), // жёлтый
-        0xFFFFC107.toInt(), // янтарный
-        0xFFFF9800.toInt(), // оранжевый
-        0xFFFF5722.toInt(), // тёмно-оранжевый
-        0xFF795548.toInt(), // коричневый
-        0xFF607D8B.toInt(), // сине-серый
-        0xFF9E9E9E.toInt(), // серый
-        0xFF000000.toInt()  // чёрный
-    )
-
-    // Сетка 5x4
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        colors.chunked(5).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { c ->
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(Color(c), RoundedCornerShape(50))
-                            .clickable { onSelect(c) }
-                            .then(
-                                if (selected == c) {
-                                    Modifier.padding(2.dp)
-                                } else Modifier
-                            )
-                    )
-                    if (selected == c) {
-                        // Маркер выбора — можно добавить рамку, но для простоты оставим так
-                    }
-                }
-            }
-        }
-    }
 }
