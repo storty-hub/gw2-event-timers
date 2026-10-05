@@ -31,6 +31,30 @@ val GW2_CLASSES = listOf(
     "Revenant"
 )
 
+// Палитра цветов (20 штук) — используется в выпадающем меню цвета
+val COLOR_OPTIONS = listOf(
+    0xFFF44336.toInt(), // красный
+    0xFFE91E63.toInt(), // розовый
+    0xFF9C27B0.toInt(), // фиолетовый
+    0xFF673AB7.toInt(), // тёмно-фиолетовый
+    0xFF3F51B5.toInt(), // индиго
+    0xFF2196F3.toInt(), // синий
+    0xFF03A9F4.toInt(), // голубой
+    0xFF00BCD4.toInt(), // циан
+    0xFF009688.toInt(), // бирюзовый
+    0xFF4CAF50.toInt(), // зелёный
+    0xFF8BC34A.toInt(), // лаймовый
+    0xFFCDDC39.toInt(), // жёлто-зелёный
+    0xFFFFEB3B.toInt(), // жёлтый
+    0xFFFFC107.toInt(), // янтарный
+    0xFFFF9800.toInt(), // оранжевый
+    0xFFFF5722.toInt(), // тёмно-оранжевый
+    0xFF795548.toInt(), // коричневый
+    0xFF607D8B.toInt(), // сине-серый
+    0xFF9E9E9E.toInt(), // серый
+    0xFF000000.toInt()  // чёрный
+)
+
 @Composable
 fun CharactersScreen(
     state: AppState,
@@ -194,11 +218,15 @@ fun CharacterDialog(
     var className by remember { mutableStateOf(existing?.className ?: GW2_CLASSES[0]) }
     var color by remember { mutableStateOf(existing?.color ?: 0xFF2196F3.toInt()) }
 
+    var classMenuExpanded by remember { mutableStateOf(false) }
+    var colorMenuExpanded by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Новый персонаж" else "Редактировать персонажа") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Имя
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -210,30 +238,77 @@ fun CharacterDialog(
                 Text("Класс:", fontWeight = FontWeight.Medium)
                 Spacer(modifier = Modifier.height(4.dp))
 
-                GW2_CLASSES.forEach { cls ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { className = cls }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                // Выпадающее меню класса
+                Box {
+                    OutlinedButton(
+                        onClick = { classMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        RadioButton(
-                            selected = className == cls,
-                            onClick = { className = cls }
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(cls)
+                        Text(className, modifier = Modifier.weight(1f))
+                        Text("▾")
+                    }
+                    DropdownMenu(
+                        expanded = classMenuExpanded,
+                        onDismissRequest = { classMenuExpanded = false }
+                    ) {
+                        GW2_CLASSES.forEach { cls ->
+                            DropdownMenuItem(
+                                text = { Text(cls) },
+                                onClick = {
+                                    className = cls
+                                    classMenuExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Цвет:", fontWeight = FontWeight.Medium)
                 Spacer(modifier = Modifier.height(4.dp))
-                ColorPalette(
-                    selected = color,
-                    onSelect = { color = it }
-                )
+
+                // Выпадающее меню цвета
+                Box {
+                    OutlinedButton(
+                        onClick = { colorMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .background(Color(color), RoundedCornerShape(50))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Выбрать цвет", modifier = Modifier.weight(1f))
+                        Text("▾")
+                    }
+                    DropdownMenu(
+                        expanded = colorMenuExpanded,
+                        onDismissRequest = { colorMenuExpanded = false }
+                    ) {
+                        // Сетка цветов внутри выпадающего меню
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            COLOR_OPTIONS.chunked(5).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    row.forEach { c ->
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .background(Color(c), RoundedCornerShape(50))
+                                                .clickable {
+                                                    color = c
+                                                    colorMenuExpanded = false
+                                                }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
