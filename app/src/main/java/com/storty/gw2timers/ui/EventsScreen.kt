@@ -5,12 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,9 +19,6 @@ import androidx.compose.ui.unit.sp
 import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.GameEvent
 import com.storty.gw2timers.logic.EventLogic
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun EventsScreen(
@@ -28,6 +26,8 @@ fun EventsScreen(
     onStateChange: (AppState) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingEvent by remember { mutableStateOf<GameEvent?>(null) }
+    var deletingEvent by remember { mutableStateOf<GameEvent?>(null) }
     var selectedEventForDetail by remember { mutableStateOf<GameEvent?>(null) }
 
     if (selectedEventForDetail != null) {
@@ -62,20 +62,61 @@ fun EventsScreen(
                     EventBlock(
                         event = event,
                         state = state,
-                        onClick = { selectedEventForDetail = event }
+                        onClick = { selectedEventForDetail = event },
+                        onEdit = { editingEvent = event },
+                        onDelete = { deletingEvent = event }
                     )
                 }
             }
         }
     }
 
+    // Диалог создания
     if (showAddDialog) {
-        AddEventDialog(
+        EventDialog(
+            existing = null,
             onDismiss = { showAddDialog = false },
             onConfirm = { newEvent ->
                 onStateChange(state.copy(events = state.events + newEvent))
                 showAddDialog = false
             }
+        )
+    }
+
+    // Диалог редактирования
+    if (editingEvent != null) {
+        EventDialog(
+            existing = editingEvent,
+            onDismiss = { editingEvent = null },
+            onConfirm = { updated ->
+                onStateChange(
+                    state.copy(
+                        events = state.events.map {
+                            if (it.id == updated.id) updated else it
+                        }
+                    )
+                )
+                editingEvent = null
+            }
+        )
+    }
+
+    // Диалог подтверждения удаления
+    if (deletingEvent != null) {
+        ConfirmDeleteDialog(
+            title = "Удалить ивент?",
+            message = "«${deletingEvent!!.name}» будет удалён. Все отметки выполнения этого ивента тоже исчезнут.",
+            onConfirm = {
+                val id = deletingEvent!!.id
+                onStateChange(
+                    state.copy(
+                        events = state.events.filter { it.id != id },
+                        completions = state.completions.filter { it.eventId != id }
+                    )
+                )
+                deletingEvent = null
+            },
+            onDismiss = { deletingEvent = null }
         )
     }
 }
@@ -84,7 +125,9 @@ fun EventsScreen(
 fun EventBlock(
     event: GameEvent,
     state: AppState,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val now = System.currentTimeMillis()
     val nextTime = EventLogic.nextAvailableTime(state, event)
@@ -102,87 +145,107 @@ fun EventBlock(
     val blockColor = if (isWindowActive) eventColor.copy(alpha = 0.7f) else eventColor
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = blockColor)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onClick() }
+            ) {
+                Text(
+                    event.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Перезапуск: ${event.restartMinutes} мин (+ окно ${event.windowMinutes} мин)",
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    statusText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
+                )
+            }
+
+            // Значки: редактировать и удалить — простые, белые
             Text(
-                event.name,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                "✏",
+                fontSize = 20.sp,
+                color = Color.White,
+                modifier = Modifier
+                    .clickable { onEdit() }
+                    .padding(8.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "Перезапуск: ${event.restartMinutes} мин (+ окно ${event.windowMinutes} мин)",
-                fontSize = 13.sp,
-                color = Color.White.copy(alpha = 0.85f)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                statusText,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
+                "✕",
+                fontSize = 22.sp,
+                color = Color.White,
+                modifier = Modifier
+                    .clickable { onDelete() }
+                    .padding(8.dp)
             )
         }
     }
 }
 
+// Универсальный диалог создания/редактирования ивента
 @Composable
-fun AddEventDialog(
+fun EventDialog(
+    existing: GameEvent?,
     onDismiss: () -> Unit,
     onConfirm: (GameEvent) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var restart by remember { mutableStateOf("60") }
-    var window by remember { mutableStateOf("30") }
-    var color by remember { mutableStateOf(0xFF4CAF50.toInt()) }
+    var name by remember { mutableStateOf(existing?.name ?: "") }
+    var restart by remember { mutableStateOf(existing?.restartMinutes?.toString() ?: "60") }
+    var window by remember { mutableStateOf(existing?.windowMinutes?.toString() ?: "30") }
+    var color by remember { mutableStateOf(existing?.color ?: 0xFF4CAF50.toInt()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Новый ивент") },
+        title = { Text(if (existing == null) "Новый ивент" else "Редактировать ивент") },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Название") }
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = restart,
                     onValueChange = { restart = it.filter { c -> c.isDigit() } },
-                    label = { Text("Перезапуск (мин)") }
+                    label = { Text("Перезапуск (мин)") },
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = window,
                     onValueChange = { window = it.filter { c -> c.isDigit() } },
-                    label = { Text("Окно (мин)") }
+                    label = { Text("Окно (мин)") },
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Цвет:")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val colors = listOf(
-                        0xFF4CAF50.toInt(), // зелёный
-                        0xFF2196F3.toInt(), // синий
-                        0xFFFF9800.toInt(), // оранжевый
-                        0xFFE91E63.toInt(), // розовый
-                        0xFF9C27B0.toInt()  // фиолетовый
-                    )
-                    colors.forEach { c ->
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(Color(c), RoundedCornerShape(50))
-                                .clickable { color = c }
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Цвет:", fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(4.dp))
+                ColorPalette(
+                    selected = color,
+                    onSelect = { color = it }
+                )
             }
         },
         confirmButton = {
@@ -191,6 +254,7 @@ fun AddEventDialog(
                     if (name.isNotBlank() && restart.toIntOrNull() != null && window.toIntOrNull() != null) {
                         onConfirm(
                             GameEvent(
+                                id = existing?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name,
                                 restartMinutes = restart.toInt(),
                                 windowMinutes = window.toInt(),
@@ -199,10 +263,33 @@ fun AddEventDialog(
                         )
                     }
                 }
-            ) { Text("Создать") }
+            ) { Text(if (existing == null) "Создать" else "Сохранить") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
+    )
+}
+
+// Универсальный диалог подтверждения удаления
+@Composable
+fun ConfirmDeleteDialog(
+    title: String,
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Да, удалить", color = Color(0xFFD32F2F))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Нет") }
         }
     )
 }
