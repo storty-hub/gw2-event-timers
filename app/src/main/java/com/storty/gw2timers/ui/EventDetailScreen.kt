@@ -39,7 +39,13 @@ fun EventDetailScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "Перезапуск: ${event.restartMinutes} мин (+ окно ${event.windowMinutes} мин)",
+            buildString {
+                append("Перезапуск: ")
+                append(event.restartMinutes?.let { "$it мин" } ?: "—")
+                append(" (+ окно ")
+                append(event.windowMinutes?.let { "$it мин" } ?: "—")
+                append(")")
+            },
             fontSize = 14.sp
         )
 
