@@ -1,6 +1,5 @@
 package com.storty.gw2timers.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,7 +70,6 @@ fun EventsScreen(
         }
     }
 
-    // Диалог создания
     if (showAddDialog) {
         EventDialog(
             existing = null,
@@ -83,7 +81,6 @@ fun EventsScreen(
         )
     }
 
-    // Диалог редактирования
     if (editingEvent != null) {
         EventDialog(
             existing = editingEvent,
@@ -101,7 +98,6 @@ fun EventsScreen(
         )
     }
 
-    // Диалог подтверждения удаления
     if (deletingEvent != null) {
         ConfirmDeleteDialog(
             title = "Удалить ивент?",
@@ -181,7 +177,6 @@ fun EventBlock(
                 )
             }
 
-            // Значки: редактировать и удалить — простые, белые
             Text(
                 "✏",
                 fontSize = 20.sp,
@@ -202,7 +197,6 @@ fun EventBlock(
     }
 }
 
-// Универсальный диалог создания/редактирования ивента
 @Composable
 fun EventDialog(
     existing: GameEvent?,
@@ -212,7 +206,7 @@ fun EventDialog(
     var name by remember { mutableStateOf(existing?.name ?: "") }
     var restart by remember { mutableStateOf(existing?.restartMinutes?.toString() ?: "60") }
     var window by remember { mutableStateOf(existing?.windowMinutes?.toString() ?: "30") }
-    var color by remember { mutableStateOf(existing?.color ?: 0xFF4CAF50.toInt()) }
+    var color by remember { mutableStateOf(existing?.color ?: COLOR_OPTIONS[9]) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -242,10 +236,7 @@ fun EventDialog(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("Цвет:", fontWeight = FontWeight.Medium)
                 Spacer(modifier = Modifier.height(4.dp))
-                ColorPalette(
-                    selected = color,
-                    onSelect = { color = it }
-                )
+                ColorDropdown(selected = color, onSelect = { color = it })
             }
         },
         confirmButton = {
@@ -267,29 +258,6 @@ fun EventDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
-        }
-    )
-}
-
-// Универсальный диалог подтверждения удаления
-@Composable
-fun ConfirmDeleteDialog(
-    title: String,
-    message: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Да, удалить", color = Color(0xFFD32F2F))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Нет") }
         }
     )
 }
