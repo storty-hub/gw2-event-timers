@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.GameEvent
+import com.storty.gw2timers.data.ThemeMode
 import com.storty.gw2timers.logic.EventLogic
 
 @Composable
@@ -46,8 +47,31 @@ fun EventsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Ивенты", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Button(onClick = { showAddDialog = true }) {
-                Text("+ Добавить")
+
+            Row {
+                // Кнопка темы
+                Text(
+                    text = when (state.themeMode) {
+                        ThemeMode.SYSTEM -> "🌓"
+                        ThemeMode.LIGHT -> "☀️"
+                        ThemeMode.DARK -> "🌙"
+                    },
+                    fontSize = 22.sp,
+                    modifier = Modifier
+                        .clickable {
+                            val next = when (state.themeMode) {
+                                ThemeMode.SYSTEM -> ThemeMode.LIGHT
+                                ThemeMode.LIGHT -> ThemeMode.DARK
+                                ThemeMode.DARK -> ThemeMode.SYSTEM
+                            }
+                            onStateChange(state.copy(themeMode = next))
+                        }
+                        .padding(8.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Button(onClick = { showAddDialog = true }) {
+                    Text("+ Добавить")
+                }
             }
         }
 
@@ -132,6 +156,7 @@ fun EventBlock(
     val eventColor = Color(event.color)
 
     val statusText = when {
+        event.restartMinutes == null -> "Без перезапуска"
         nextTime == null -> "Не выполнялся"
         now < nextTime -> "Доступен через ${formatDuration(nextTime - now)}"
         isWindowActive -> "Окно активно! Осталось ${formatDuration(windowEnd!! - now)}"
@@ -164,7 +189,13 @@ fun EventBlock(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Перезапуск: ${event.restartMinutes} мин (+ окно ${event.windowMinutes} мин)",
+                    buildString {
+                        append("Перезапуск: ")
+                        append(event.restartMinutes?.let { "$it мин" } ?: "—")
+                        append(" (+ окно ")
+                        append(event.windowMinutes?.let { "$it мин" } ?: "—")
+                        append(")")
+                    },
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.85f)
                 )
@@ -204,8 +235,8 @@ fun EventDialog(
     onConfirm: (GameEvent) -> Unit
 ) {
     var name by remember { mutableStateOf(existing?.name ?: "") }
-    var restart by remember { mutableStateOf(existing?.restartMinutes?.toString() ?: "60") }
-    var window by remember { mutableStateOf(existing?.windowMinutes?.toString() ?: "30") }
+    var restart by remember { mutableStateOf(existing?.restartMinutes?.toString() ?: "") }
+    var window by remember { mutableStateOf(existing?.windowMinutes?.toString() ?: "") }
     var color by remember { mutableStateOf(existing?.color ?: COLOR_OPTIONS[9]) }
 
     AlertDialog(
@@ -223,14 +254,14 @@ fun EventDialog(
                 OutlinedTextField(
                     value = restart,
                     onValueChange = { restart = it.filter { c -> c.isDigit() } },
-                    label = { Text("Перезапуск (мин)") },
+                    label = { Text("Перезапуск (мин) — необязательно") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = window,
                     onValueChange = { window = it.filter { c -> c.isDigit() } },
-                    label = { Text("Окно (мин)") },
+                    label = { Text("Окно (мин) — необязательно") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -242,13 +273,13 @@ fun EventDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (name.isNotBlank() && restart.toIntOrNull() != null && window.toIntOrNull() != null) {
+                    if (name.isNotBlank()) {
                         onConfirm(
                             GameEvent(
                                 id = existing?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name,
-                                restartMinutes = restart.toInt(),
-                                windowMinutes = window.toInt(),
+                                restartMinutes = restart.toIntOrNull(),
+                                windowMinutes = window.toIntOrNull(),
                                 color = color
                             )
                         )
