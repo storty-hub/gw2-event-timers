@@ -46,8 +46,8 @@ fun EventDetailScreen(
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
-        Text(
-            "Окно CD: ${event.windowMinutes?.let { "$it мин" } ?: "—"}",
+       Text(
+            "\"окно\": ${event.windowMinutes?.let { "$it мин" } ?: "—"}",
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
