@@ -40,23 +40,28 @@ fun EventsScreen(
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        // Шапка
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Ивенты", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Ивенты",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
 
-            Row {
-                // Кнопка темы
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = when (state.themeMode) {
                         ThemeMode.SYSTEM -> "🌓"
                         ThemeMode.LIGHT -> "☀️"
                         ThemeMode.DARK -> "🌙"
                     },
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     modifier = Modifier
                         .clickable {
                             val next = when (state.themeMode) {
@@ -69,18 +74,26 @@ fun EventsScreen(
                         .padding(8.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Button(onClick = { showAddDialog = true }) {
-                    Text("+ Добавить")
+                FilledTonalButton(
+                    onClick = { showAddDialog = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text("+", fontSize = 18.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Ивент")
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         if (state.events.isEmpty()) {
-            Text("Пока нет ивентов. Нажми «+ Добавить», чтобы создать первый.")
+            Text(
+                "Пока нет ивентов",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(state.events) { event ->
                     EventBlock(
                         event = event,
@@ -125,7 +138,7 @@ fun EventsScreen(
     if (deletingEvent != null) {
         ConfirmDeleteDialog(
             title = "Удалить ивент?",
-            message = "«${deletingEvent!!.name}» будет удалён. Все отметки выполнения этого ивента тоже исчезнут.",
+            message = "«${deletingEvent!!.name}» будет удалён вместе со всеми отметками.",
             onConfirm = {
                 val id = deletingEvent!!.id
                 onStateChange(
@@ -156,75 +169,61 @@ fun EventBlock(
     val eventColor = Color(event.color)
 
     val statusText = when {
-        event.restartMinutes == null -> "Без перезапуска"
-        nextTime == null -> "Не выполнялся"
-        now < nextTime -> "Доступен через ${formatDuration(nextTime - now)}"
-        isWindowActive -> "Окно активно! Осталось ${formatDuration(windowEnd!! - now)}"
-        else -> "Доступен"
+        event.restartMinutes == null -> "—"
+        nextTime == null -> "не выполнялся"
+        now < nextTime -> "через ${formatDuration(nextTime - now)}"
+        isWindowActive -> "окно! ${formatDuration(windowEnd!! - now)}"
+        else -> "готов"
     }
 
-    val blockColor = if (isWindowActive) eventColor.copy(alpha = 0.7f) else eventColor
+    val blockColor = if (isWindowActive) eventColor.copy(alpha = 0.75f) else eventColor
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = blockColor)
+    // Минималистичный блок: одна строка с названием, статусом и кнопками
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // Цветная полоска слева
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onClick() }
-            ) {
-                Text(
-                    event.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    buildString {
-                        append("Перезапуск: ")
-                        append(event.restartMinutes?.let { "$it мин" } ?: "—")
-                        append(" (+ окно ")
-                        append(event.windowMinutes?.let { "$it мин" } ?: "—")
-                        append(")")
-                    },
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.85f)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    statusText,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
-            }
+                .width(4.dp)
+                .height(44.dp)
+                .background(blockColor, RoundedCornerShape(2.dp))
+        )
+        Spacer(modifier = Modifier.width(10.dp))
 
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                "✏",
-                fontSize = 20.sp,
-                color = Color.White,
-                modifier = Modifier
-                    .clickable { onEdit() }
-                    .padding(8.dp)
+                event.name,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                "✕",
-                fontSize = 22.sp,
-                color = Color.White,
-                modifier = Modifier
-                    .clickable { onDelete() }
-                    .padding(8.dp)
+                statusText,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
         }
+
+        Text(
+            "✏",
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            modifier = Modifier
+                .clickable { onEdit() }
+                .padding(8.dp)
+        )
+        Text(
+            "✕",
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            modifier = Modifier
+                .clickable { onDelete() }
+                .padding(8.dp)
+        )
     }
 }
 
@@ -235,37 +234,71 @@ fun EventDialog(
     onConfirm: (GameEvent) -> Unit
 ) {
     var name by remember { mutableStateOf(existing?.name ?: "") }
+    var useCd by remember { mutableStateOf(existing?.restartMinutes != null) }
+    var useWindow by remember { mutableStateOf(existing?.windowMinutes != null) }
     var restart by remember { mutableStateOf(existing?.restartMinutes?.toString() ?: "") }
     var window by remember { mutableStateOf(existing?.windowMinutes?.toString() ?: "") }
     var color by remember { mutableStateOf(existing?.color ?: COLOR_OPTIONS[9]) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "Новый ивент" else "Редактировать ивент") },
+        title = { Text(if (existing == null) "Новый ивент" else "Редактировать") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Название") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = restart,
-                    onValueChange = { restart = it.filter { c -> c.isDigit() } },
-                    label = { Text("Перезапуск (мин) — необязательно") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = window,
-                    onValueChange = { window = it.filter { c -> c.isDigit() } },
-                    label = { Text("Окно (мин) — необязательно") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+
+                // Чекбокс CD
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { useCd = !useCd }
+                ) {
+                    Checkbox(checked = useCd, onCheckedChange = { useCd = it })
+                    Text("CD")
+                }
+                if (useCd) {
+                    OutlinedTextField(
+                        value = restart,
+                        onValueChange = { restart = it.filter { c -> c.isDigit() } },
+                        label = { Text("Минуты") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Чекбокс Окно
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { useWindow = !useWindow }
+                ) {
+                    Checkbox(checked = useWindow, onCheckedChange = { useWindow = it })
+                    Text("Окно")
+                }
+                if (useWindow) {
+                    OutlinedTextField(
+                        value = window,
+                        onValueChange = { window = it.filter { c -> c.isDigit() } },
+                        label = { Text("Минуты") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Цвет:", fontWeight = FontWeight.Medium)
+                Text("Цвет", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 ColorDropdown(selected = color, onSelect = { color = it })
             }
@@ -278,8 +311,8 @@ fun EventDialog(
                             GameEvent(
                                 id = existing?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name,
-                                restartMinutes = restart.toIntOrNull(),
-                                windowMinutes = window.toIntOrNull(),
+                                restartMinutes = if (useCd) restart.toIntOrNull() else null,
+                                windowMinutes = if (useWindow) window.toIntOrNull() else null,
                                 color = color
                             )
                         )
