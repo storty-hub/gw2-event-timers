@@ -1,3 +1,5 @@
+import androidx.compose.foundation.background
+
 @Composable
 fun CharacterBlock(
     character: Character,
