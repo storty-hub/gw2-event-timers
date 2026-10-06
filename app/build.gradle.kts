@@ -15,9 +15,9 @@ android {
         versionName = "1.1"
     }
 
-    // Подпись отладочным ключом из репозитория
+    // Подпись одним и тем же ключом для всех сборок
     signingConfigs {
-        create("release") {
+        create("debugKey") {
             storeFile = file("../keystore/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
@@ -27,11 +27,11 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("debugKey")
         }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("debugKey")
         }
     }
 
