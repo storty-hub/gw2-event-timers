@@ -179,18 +179,35 @@ fun EventBlock(
 
     val blockColor = if (isWindowActive) eventColor.copy(alpha = 0.75f) else eventColor
 
-    // Минималистичный блок: одна строка с названием, статусом и кнопками
+    // Прогресс: 0f = только что выполнен, 1f = готов
+    val progress: Float? = when {
+        event.restartMinutes == null -> null
+        nextTime == null -> null
+        now < nextTime -> {
+            // CD идёт: прогресс от 0 до 1
+            val total = event.restartMinutes * 60_000f
+            val elapsed = (now - (nextTime - event.restartMinutes * 60_000L)).toFloat()
+            (elapsed / total).coerceIn(0f, 1f)
+        }
+        isWindowActive -> {
+            // Окно активно: прогресс от 1 до 1 (полный)
+            1f
+        }
+        else -> 1f
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable { onClick() }
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Цветная полоска слева
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(44.dp)
+                .height(48.dp)
                 .background(blockColor, RoundedCornerShape(2.dp))
         )
         Spacer(modifier = Modifier.width(10.dp))
@@ -207,6 +224,19 @@ fun EventBlock(
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
+
+            // Прогресс-бар
+            if (progress != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp),
+                    color = blockColor,
+                    trackColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)
+                )
+            }
         }
 
         Text(
