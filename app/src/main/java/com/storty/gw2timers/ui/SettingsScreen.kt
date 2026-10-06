@@ -27,7 +27,6 @@ fun SettingsScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // Шапка
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("← Назад") }
             Spacer(modifier = Modifier.weight(1f))
@@ -49,9 +48,7 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        onStateChange(state.copy(themeMode = mode))
-                    }
+                    .clickable { onStateChange(state.copy(themeMode = mode)) }
                     .padding(vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -97,8 +94,7 @@ fun SettingsScreen(
                         SortMode.ALPHABETICAL -> "По алфавиту"
                         SortMode.CD_ASC -> "По возрастанию CD"
                         SortMode.CD_DESC -> "По убыванию CD"
-                        SortMode.READY_FIRST -> "Скоро готовые наверх"
-                        SortMode.SMART -> "Умная (окно + ближайшие)"
+                        SortMode.SMART -> "Умная (готовые → окно → скоро)"
                     }
                 )
             }
@@ -116,7 +112,7 @@ fun SettingsScreen(
             }
         )
         SettingSwitch(
-            label = "Показывать прогресс окна",
+            label = "Показывать прогресс окна CD",
             checked = state.settings.showWindowProgress,
             onChange = {
                 onStateChange(state.copy(settings = state.settings.copy(showWindowProgress = it)))
@@ -137,10 +133,10 @@ fun SettingsScreen(
             }
         )
         SettingSwitch(
-            label = "Скрывать выполненные сегодня",
-            checked = state.settings.hideCompletedToday,
+            label = "Серые выполненные (вниз списка)",
+            checked = state.settings.grayOutCompleted,
             onChange = {
-                onStateChange(state.copy(settings = state.settings.copy(hideCompletedToday = it)))
+                onStateChange(state.copy(settings = state.settings.copy(grayOutCompleted = it)))
             }
         )
 
