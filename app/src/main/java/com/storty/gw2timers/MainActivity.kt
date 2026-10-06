@@ -9,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.Storage
 import com.storty.gw2timers.data.ThemeMode
 import com.storty.gw2timers.ui.CharactersScreen
@@ -34,7 +33,6 @@ fun GW2TimersApp() {
         Storage.save(context, state)
     }
 
-    // Определяем, тёмная ли тема
     val systemDark = isSystemInDarkTheme()
     val useDark = when (state.themeMode) {
         ThemeMode.SYSTEM -> systemDark
@@ -45,33 +43,39 @@ fun GW2TimersApp() {
     val colorScheme = if (useDark) darkColorScheme() else lightColorScheme()
 
     MaterialTheme(colorScheme = colorScheme) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1f)) {
-                when (selectedTab) {
-                    0 -> EventsScreen(
-                        state = state,
-                        onStateChange = { state = it }
+        // Surface красит весь фон под цвет темы
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f)) {
+                    when (selectedTab) {
+                        0 -> EventsScreen(
+                            state = state,
+                            onStateChange = { state = it }
+                        )
+                        1 -> CharactersScreen(
+                            state = state,
+                            onStateChange = { state = it }
+                        )
+                    }
+                }
+
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        icon = { Text("📅") },
+                        label = { Text("Ивенты") }
                     )
-                    1 -> CharactersScreen(
-                        state = state,
-                        onStateChange = { state = it }
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        icon = { Text("👤") },
+                        label = { Text("Персонажи") }
                     )
                 }
-            }
-
-            NavigationBar {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    icon = { Text("📅") },
-                    label = { Text("Ивенты") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    icon = { Text("👤") },
-                    label = { Text("Персонажи") }
-                )
             }
         }
     }
