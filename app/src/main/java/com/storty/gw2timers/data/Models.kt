@@ -27,24 +27,21 @@ enum class ThemeMode {
     SYSTEM, LIGHT, DARK
 }
 
-// Варианты сортировки ивентов
 enum class SortMode {
     ADDED,          // по добавлению
     ALPHABETICAL,   // по алфавиту
     CD_ASC,         // по возрастанию CD
     CD_DESC,        // по убыванию CD
-    READY_FIRST,    // скоро готовые наверх
-    SMART           // умная: окно + ближайшие наверх
+    SMART           // умная: готовые → окно → скоро готовые
 }
 
-// Настройки приложения
 data class AppSettings(
     val sortMode: SortMode = SortMode.SMART,
     val showProgressBar: Boolean = true,
     val showWindowProgress: Boolean = true,
     val showIdleTime: Boolean = true,
     val compactMode: Boolean = false,
-    val hideCompletedToday: Boolean = false
+    val grayOutCompleted: Boolean = false
 )
 
 data class AppState(
