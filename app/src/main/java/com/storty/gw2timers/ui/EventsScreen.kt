@@ -267,7 +267,7 @@ fun EventBlock(
             windowProgress = null
         }
         isWindowActive && windowEnd != null -> {
-            statusText = "Окно CD! ${formatDuration(windowEnd - currentTime)}"
+            statusText = "\"окно\"! ${formatDuration(windowEnd - currentTime)}"
             cdProgress = 1f
             val windowTotal = event.windowMinutes!! * 60_000f
             val windowElapsed = (currentTime - nextTime).toFloat()
@@ -408,7 +408,7 @@ fun EventDialog(
                     modifier = Modifier.fillMaxWidth().clickable { useWindow = !useWindow }
                 ) {
                     Checkbox(checked = useWindow, onCheckedChange = { useWindow = it })
-                    Text("Окно CD")
+                    Text("\"окно\"")
                 }
                 if (useWindow) {
                     OutlinedTextField(
