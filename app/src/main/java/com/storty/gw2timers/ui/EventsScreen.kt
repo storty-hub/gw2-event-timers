@@ -63,7 +63,6 @@ fun EventsScreen(
         return
     }
 
-    // Проверка: выполнен ли ивент ВСЕМИ персонажами сегодня
     fun isDoneByAll(event: GameEvent): Boolean {
         if (state.characters.isEmpty()) return false
         val todayStart = EventLogic.todayStartUtc()
@@ -74,7 +73,6 @@ fun EventsScreen(
         }
     }
 
-    // Сортировка
     val sortedEvents = when (state.settings.sortMode) {
         SortMode.ADDED -> state.events
         SortMode.ALPHABETICAL -> state.events.sortedBy { it.name.lowercase() }
@@ -86,32 +84,23 @@ fun EventsScreen(
                 val windowEnd = EventLogic.windowEndTime(state, event)
                 val isWindow = EventLogic.isWindowActive(state, event)
                 when {
-                    // 1. Готовые (CD прошёл, окно уже закрыто или не было) — наверх
-                    next != null && currentTime >= next &&
-                        (!isWindow) -> {
-                        // Чем дольше ждёт, тем выше
+                    next != null && currentTime >= next && !isWindow -> {
                         val idleSince = windowEnd ?: next
                         0L + (currentTime - idleSince) / 60_000L
                     }
-                    // 2. Окно CD активно
                     isWindow -> 1_000_000L + (windowEnd?.let { it - currentTime } ?: 0L) / 60_000L
-                    // 3. Скоро готов (CD закончится в пределах 15 мин)
                     next != null && next > currentTime &&
                         next - currentTime <= 15 * 60_000L -> {
                         2_000_000L + (next - currentTime) / 60_000L
                     }
-                    // 4. Далёкий CD
                     next != null -> 3_000_000L + (next - currentTime) / 60_000L
-                    // 5. Без CD — в самый конец
                     else -> Long.MAX_VALUE / 2
                 }
             }
         }
     }
 
-    // Обработка "серых выполненных"
     val displayedEvents: List<GameEvent> = if (state.settings.grayOutCompleted) {
-        // Выполненные — в конец
         sortedEvents.sortedBy { if (isDoneByAll(it)) 1 else 0 }
     } else {
         sortedEvents
@@ -447,11 +436,4 @@ fun EventDialog(
             TextButton(onClick = onDismiss) { Text("Отмена") }
         }
     )
-}
-
-fun formatDuration(millis: Long): String {
-    val totalMinutes = (millis / 60000).toInt()
-    val hours = totalMinutes / 60
-    val minutes = totalMinutes % 60
-    return if (hours > 0) "${hours}ч ${minutes}м" else "${minutes}м"
 }
