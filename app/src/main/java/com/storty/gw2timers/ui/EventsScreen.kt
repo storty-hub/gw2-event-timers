@@ -445,4 +445,13 @@ fun EventDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
-       
+        }
+    )
+}
+
+fun formatDuration(millis: Long): String {
+    val totalMinutes = (millis / 60000).toInt()
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) "${hours}ч ${minutes}м" else "${minutes}м"
+}
