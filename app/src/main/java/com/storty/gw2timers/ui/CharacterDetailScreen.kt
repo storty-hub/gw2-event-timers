@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.Character
+import com.storty.gw2timers.data.GameEvent
 import com.storty.gw2timers.data.SortMode
 import com.storty.gw2timers.logic.EventLogic
 import kotlinx.coroutines.delay
@@ -39,7 +40,6 @@ fun CharacterDetailScreen(
     val settings = state.settings
     val compact = settings.compactMode
 
-    // Сортировка — та же логика, что и в EventsScreen
     val sortedEvents = when (settings.sortMode) {
         SortMode.ADDED -> state.events
         SortMode.ALPHABETICAL -> state.events.sortedBy { it.name.lowercase() }
@@ -80,7 +80,6 @@ fun CharacterDetailScreen(
                 vertical = if (compact) 8.dp else 12.dp
             )
     ) {
-        // Шапка
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("← Назад") }
             Spacer(modifier = Modifier.weight(1f))
@@ -142,7 +141,7 @@ fun CharacterDetailScreen(
 
 @Composable
 fun CharacterEventBlock(
-    event: com.storty.gw2timers.data.GameEvent,
+    event: GameEvent,
     state: AppState,
     currentTime: Long,
     didToday: Boolean,
@@ -194,9 +193,7 @@ fun CharacterEventBlock(
         }
     }
 
-    // Если персонаж уже сделал сегодня — серый
     val grayed = didToday
-
     val blockColor = if (isWindowActive) eventColor.copy(alpha = 0.75f) else eventColor
     val compact = settings.compactMode
     val rowHeight = if (compact) 32.dp else 48.dp
@@ -265,11 +262,4 @@ fun CharacterEventBlock(
             }
         }
     }
-}
-
-fun formatDuration(millis: Long): String {
-    val totalMinutes = (millis / 60000).toInt()
-    val hours = totalMinutes / 60
-    val minutes = totalMinutes % 60
-    return if (hours > 0) "${hours}ч ${minutes}м" else "${minutes}м"
 }
