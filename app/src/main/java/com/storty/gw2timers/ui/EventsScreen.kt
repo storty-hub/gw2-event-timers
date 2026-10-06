@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.GameEvent
-import com.storty.gw2timers.data.ThemeMode
+import com.storty.gw2timers.data.SortMode
 import com.storty.gw2timers.logic.EventLogic
 import kotlinx.coroutines.delay
 
@@ -32,14 +32,25 @@ fun EventsScreen(
     var deletingEvent by remember { mutableStateOf<GameEvent?>(null) }
     var selectedEventForDetail by remember { mutableStateOf<GameEvent?>(null) }
     var showHistory by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
 
-        // Тикер реального времени — обновляется каждые 5 секунд
+    // Тикер реального времени — каждые 5 секунд
     var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             currentTime = System.currentTimeMillis()
             delay(5000)
         }
+    }
+
+    // Экран настроек
+    if (showSettings) {
+        SettingsScreen(
+            state = state,
+            onStateChange = onStateChange,
+            onBack = { showSettings = false }
+        )
+        return
     }
 
     // Экран истории
@@ -52,7 +63,7 @@ fun EventsScreen(
         return
     }
 
-    // Экран деталей ивента
+    // Экран деталей
     if (selectedEventForDetail != null) {
         EventDetailScreen(
             event = selectedEventForDetail!!,
@@ -63,7 +74,65 @@ fun EventsScreen(
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+    // Фильтрация + сортировка
+    val todayStart = EventLogic.todayStartUtc()
+
+    val visibleEvents = state.events
+        .filter { event ->
+            if (!state.settings.hideCompletedToday) true
+            else {
+                // Скрываем, если ВСЕ персонажи сделали сегодня, или без персонажа сделали сегодня
+                val doneWithoutChar = state.completions.any {
+                    it.eventId == event.id && it.characterId == null && it.timestamp >= todayStart
+                }
+                val doneByAll = state.characters.isNotEmpty() && state.characters.all { ch ->
+                    state.completions.any {
+                        it.eventId == event.id && it.characterId == ch.id && it.timestamp >= todayStart
+                    }
+                }
+                !doneWithoutChar && !doneByAll
+            }
+        }
+        .let { events ->
+            when (state.settings.sortMode) {
+                SortMode.ADDED -> events
+                SortMode.ALPHABETICAL -> events.sortedBy { it.name.lowercase() }
+                SortMode.CD_ASC -> events.sortedBy { it.restartMinutes ?: Int.MAX_VALUE }
+                SortMode.CD_DESC -> events.sortedByDescending { it.restartMinutes ?: -1 }
+                SortMode.READY_FIRST, SortMode.SMART -> {
+                    events.sortedBy { event ->
+                        val next = EventLogic.nextAvailableTime(state, event)
+                        val windowEnd = EventLogic.windowEndTime(state, event)
+                        val isWindow = EventLogic.isWindowActive(state, event)
+                        when {
+                            // Окно активно — самое высокое приоритет
+                            isWindow -> 0L
+                            // Скоро готов (в пределах 10 мин)
+                            next != null && next > currentTime && next - currentTime <= 10 * 60_000L -> 1L
+                            // Готов и простаивает — по времени простоя
+                            next != null && next <= currentTime -> {
+                                val idleSince = windowEnd ?: next
+                                // Чем дольше ждёт, тем выше
+                                2L + (currentTime - idleSince) / 60_000L
+                            }
+                            // Далёкий CD — в конец
+                            next != null -> 3L + (next - currentTime) / 60_000L
+                            // Без CD — в самый конец
+                            else -> Long.MAX_VALUE
+                        }
+                    }
+                }
+            }
+        }
+
+    val compact = state.settings.compactMode
+    val verticalPad = if (compact) 3.dp else 6.dp
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
         // Шапка
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -78,7 +147,6 @@ fun EventsScreen(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // История
                 Text(
                     "📜",
                     fontSize = 20.sp,
@@ -86,7 +154,6 @@ fun EventsScreen(
                         .clickable { showHistory = true }
                         .padding(8.dp)
                 )
-                // Обновить
                 Text(
                     "🔄",
                     fontSize = 20.sp,
@@ -94,23 +161,11 @@ fun EventsScreen(
                         .clickable { currentTime = System.currentTimeMillis() }
                         .padding(8.dp)
                 )
-                // Тема
                 Text(
-                    text = when (state.themeMode) {
-                        ThemeMode.SYSTEM -> "🌓"
-                        ThemeMode.LIGHT -> "☀️"
-                        ThemeMode.DARK -> "🌙"
-                    },
+                    "⚙️",
                     fontSize = 20.sp,
                     modifier = Modifier
-                        .clickable {
-                            val next = when (state.themeMode) {
-                                ThemeMode.SYSTEM -> ThemeMode.LIGHT
-                                ThemeMode.LIGHT -> ThemeMode.DARK
-                                ThemeMode.DARK -> ThemeMode.SYSTEM
-                            }
-                            onStateChange(state.copy(themeMode = next))
-                        }
+                        .clickable { showSettings = true }
                         .padding(8.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -127,14 +182,14 @@ fun EventsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (state.events.isEmpty()) {
+        if (visibleEvents.isEmpty()) {
             Text(
                 "Пока нет ивентов",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(state.events) { event ->
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(verticalPad)) {
+                items(visibleEvents, key = { it.id }) { event ->
                     EventBlock(
                         event = event,
                         state = state,
@@ -148,7 +203,7 @@ fun EventsScreen(
         }
     }
 
-    // Диалог создания
+    // Диалоги
     if (showAddDialog) {
         EventDialog(
             existing = null,
@@ -160,7 +215,6 @@ fun EventsScreen(
         )
     }
 
-    // Диалог редактирования
     if (editingEvent != null) {
         EventDialog(
             existing = editingEvent,
@@ -178,7 +232,6 @@ fun EventsScreen(
         )
     }
 
-    // Диалог удаления
     if (deletingEvent != null) {
         ConfirmDeleteDialog(
             title = "Удалить ивент?",
@@ -207,63 +260,71 @@ fun EventBlock(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val settings = state.settings
     val nextTime = EventLogic.nextAvailableTime(state, event)
     val windowEnd = EventLogic.windowEndTime(state, event)
     val isWindowActive = EventLogic.isWindowActive(state, event)
     val eventColor = Color(event.color)
 
-    // Расчёт статуса и прогресса
     val statusText: String
-    val progress: Float?
+    val cdProgress: Float?
+    val windowProgress: Float?
 
     when {
         event.restartMinutes == null -> {
             statusText = "—"
-            progress = null
+            cdProgress = null
+            windowProgress = null
         }
         nextTime == null -> {
             statusText = "не выполнялся"
-            progress = null
+            cdProgress = null
+            windowProgress = null
         }
         currentTime < nextTime -> {
-            // CD идёт
             statusText = "через ${formatDuration(nextTime - currentTime)}"
             val total = event.restartMinutes * 60_000f
             val elapsed = (currentTime - (nextTime - event.restartMinutes * 60_000L)).toFloat()
-            progress = (elapsed / total).coerceIn(0f, 1f)
+            cdProgress = (elapsed / total).coerceIn(0f, 1f)
+            windowProgress = null
         }
         isWindowActive && windowEnd != null -> {
-            // Окно активно
             statusText = "окно! ${formatDuration(windowEnd - currentTime)}"
-            progress = 1f
+            cdProgress = 1f
+            // Прогресс окна: 0 = только началось, 1 = заканчивается
+            val windowTotal = event.windowMinutes!! * 60_000f
+            val windowElapsed = (currentTime - nextTime).toFloat()
+            windowProgress = (windowElapsed / windowTotal).coerceIn(0f, 1f)
         }
         else -> {
-            // CD прошёл, ивент простаивает
             val idleSince = windowEnd ?: nextTime
             val idleFor = currentTime - idleSince
-            statusText = if (idleFor < 60_000L) {
+            statusText = if (!settings.showIdleTime || idleFor < 60_000L) {
                 "готов"
             } else {
                 "готов · ждёт ${formatDuration(idleFor)}"
             }
-            progress = 1f
+            cdProgress = 1f
+            windowProgress = null
         }
     }
 
     val blockColor = if (isWindowActive) eventColor.copy(alpha = 0.75f) else eventColor
+    val compact = settings.compactMode
+    val rowHeight = if (compact) 38.dp else 48.dp
+    val rowPad = if (compact) 3.dp else 6.dp
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 6.dp),
+            .padding(vertical = rowPad),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Цветная полоска слева
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(48.dp)
+                .height(rowHeight)
                 .background(blockColor, RoundedCornerShape(2.dp))
         )
         Spacer(modifier = Modifier.width(10.dp))
@@ -271,7 +332,7 @@ fun EventBlock(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 event.name,
-                fontSize = 16.sp,
+                fontSize = if (compact) 14.sp else 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -281,17 +342,33 @@ fun EventBlock(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
 
-            // Прогресс-бар
-            if (progress != null) {
+            if (settings.showProgressBar && cdProgress != null) {
                 Spacer(modifier = Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp),
-                    color = blockColor,
-                    trackColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)
-                )
+                Box(modifier = Modifier.fillMaxWidth().height(3.dp)) {
+                    LinearProgressIndicator(
+                        progress = { cdProgress },
+                        modifier = Modifier.fillMaxSize(),
+                        color = blockColor,
+                        trackColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.15f)
+                    )
+                    // Второй прогресс-бар — окно (поверх)
+                    if (settings.showWindowProgress && windowProgress != null) {
+                        LinearProgressIndicator(
+                            progress = { windowProgress },
+                            modifier = Modifier.fillMaxSize(),
+                            color = blockColor.copy(alpha = 1f).let {
+                                // Ярче — добавляем белизну
+                                Color(
+                                    red = (it.red + 0.4f).coerceAtMost(1f),
+                                    green = (it.green + 0.4f).coerceAtMost(1f),
+                                    blue = (it.blue + 0.4f).coerceAtMost(1f),
+                                    alpha = 1f
+                                )
+                            },
+                            trackColor = Color.Transparent
+                        )
+                    }
+                }
             }
         }
 
@@ -342,7 +419,6 @@ fun EventDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Чекбокс CD
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -364,7 +440,6 @@ fun EventDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Чекбокс Окно
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
