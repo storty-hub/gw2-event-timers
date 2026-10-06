@@ -153,3 +153,12 @@ fun ConfirmDeleteDialog(
         }
     )
 }
+
+// ===== Форматирование длительности =====
+// 3600000 → "1ч 0м", 300000 → "5м"
+fun formatDuration(millis: Long): String {
+    val totalMinutes = (millis / 60000).toInt()
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) "${hours}ч ${minutes}м" else "${minutes}м"
+}
