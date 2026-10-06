@@ -20,6 +20,7 @@ import com.storty.gw2timers.data.AppState
 import com.storty.gw2timers.data.GameEvent
 import com.storty.gw2timers.data.ThemeMode
 import com.storty.gw2timers.logic.EventLogic
+import kotlinx.coroutines.delay
 
 @Composable
 fun EventsScreen(
@@ -31,6 +32,15 @@ fun EventsScreen(
     var deletingEvent by remember { mutableStateOf<GameEvent?>(null) }
     var selectedEventForDetail by remember { mutableStateOf<GameEvent?>(null) }
     var showHistory by remember { mutableStateOf(false) }
+
+        // Тикер реального времени — обновляется каждые 5 секунд
+    var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = System.currentTimeMillis()
+            delay(5000)
+        }
+    }
 
     // Экран истории
     if (showHistory) {
@@ -74,6 +84,14 @@ fun EventsScreen(
                     fontSize = 20.sp,
                     modifier = Modifier
                         .clickable { showHistory = true }
+                        .padding(8.dp)
+                )
+                // Обновить
+                Text(
+                    "🔄",
+                    fontSize = 20.sp,
+                    modifier = Modifier
+                        .clickable { currentTime = System.currentTimeMillis() }
                         .padding(8.dp)
                 )
                 // Тема
@@ -120,6 +138,7 @@ fun EventsScreen(
                     EventBlock(
                         event = event,
                         state = state,
+                        currentTime = currentTime,
                         onClick = { selectedEventForDetail = event },
                         onEdit = { editingEvent = event },
                         onDelete = { deletingEvent = event }
@@ -183,37 +202,55 @@ fun EventsScreen(
 fun EventBlock(
     event: GameEvent,
     state: AppState,
+    currentTime: Long,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val now = System.currentTimeMillis()
     val nextTime = EventLogic.nextAvailableTime(state, event)
     val windowEnd = EventLogic.windowEndTime(state, event)
     val isWindowActive = EventLogic.isWindowActive(state, event)
     val eventColor = Color(event.color)
 
-    val statusText = when {
-        event.restartMinutes == null -> "—"
-        nextTime == null -> "не выполнялся"
-        now < nextTime -> "через ${formatDuration(nextTime - now)}"
-        isWindowActive -> "окно! ${formatDuration(windowEnd!! - now)}"
-        else -> "готов"
+    // Расчёт статуса и прогресса
+    val statusText: String
+    val progress: Float?
+
+    when {
+        event.restartMinutes == null -> {
+            statusText = "—"
+            progress = null
+        }
+        nextTime == null -> {
+            statusText = "не выполнялся"
+            progress = null
+        }
+        currentTime < nextTime -> {
+            // CD идёт
+            statusText = "через ${formatDuration(nextTime - currentTime)}"
+            val total = event.restartMinutes * 60_000f
+            val elapsed = (currentTime - (nextTime - event.restartMinutes * 60_000L)).toFloat()
+            progress = (elapsed / total).coerceIn(0f, 1f)
+        }
+        isWindowActive && windowEnd != null -> {
+            // Окно активно
+            statusText = "окно! ${formatDuration(windowEnd - currentTime)}"
+            progress = 1f
+        }
+        else -> {
+            // CD прошёл, ивент простаивает
+            val idleSince = windowEnd ?: nextTime
+            val idleFor = currentTime - idleSince
+            statusText = if (idleFor < 60_000L) {
+                "готов"
+            } else {
+                "готов · ждёт ${formatDuration(idleFor)}"
+            }
+            progress = 1f
+        }
     }
 
     val blockColor = if (isWindowActive) eventColor.copy(alpha = 0.75f) else eventColor
-
-    // Прогресс: 0f = только что выполнен, 1f = готов
-    val progress: Float? = when {
-        event.restartMinutes == null -> null
-        nextTime == null -> null
-        now < nextTime -> {
-            val total = event.restartMinutes * 60_000f
-            val elapsed = (now - (nextTime - event.restartMinutes * 60_000L)).toFloat()
-            (elapsed / total).coerceIn(0f, 1f)
-        }
-        else -> 1f
-    }
 
     Row(
         modifier = Modifier
