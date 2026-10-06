@@ -30,7 +30,19 @@ fun EventsScreen(
     var editingEvent by remember { mutableStateOf<GameEvent?>(null) }
     var deletingEvent by remember { mutableStateOf<GameEvent?>(null) }
     var selectedEventForDetail by remember { mutableStateOf<GameEvent?>(null) }
+    var showHistory by remember { mutableStateOf(false) }
 
+    // Экран истории
+    if (showHistory) {
+        HistoryScreen(
+            state = state,
+            onStateChange = onStateChange,
+            onBack = { showHistory = false }
+        )
+        return
+    }
+
+    // Экран деталей ивента
     if (selectedEventForDetail != null) {
         EventDetailScreen(
             event = selectedEventForDetail!!,
@@ -56,6 +68,15 @@ fun EventsScreen(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // История
+                Text(
+                    "📜",
+                    fontSize = 20.sp,
+                    modifier = Modifier
+                        .clickable { showHistory = true }
+                        .padding(8.dp)
+                )
+                // Тема
                 Text(
                     text = when (state.themeMode) {
                         ThemeMode.SYSTEM -> "🌓"
@@ -108,6 +129,7 @@ fun EventsScreen(
         }
     }
 
+    // Диалог создания
     if (showAddDialog) {
         EventDialog(
             existing = null,
@@ -119,6 +141,7 @@ fun EventsScreen(
         )
     }
 
+    // Диалог редактирования
     if (editingEvent != null) {
         EventDialog(
             existing = editingEvent,
@@ -136,6 +159,7 @@ fun EventsScreen(
         )
     }
 
+    // Диалог удаления
     if (deletingEvent != null) {
         ConfirmDeleteDialog(
             title = "Удалить ивент?",
@@ -184,14 +208,9 @@ fun EventBlock(
         event.restartMinutes == null -> null
         nextTime == null -> null
         now < nextTime -> {
-            // CD идёт: прогресс от 0 до 1
             val total = event.restartMinutes * 60_000f
             val elapsed = (now - (nextTime - event.restartMinutes * 60_000L)).toFloat()
             (elapsed / total).coerceIn(0f, 1f)
-        }
-        isWindowActive -> {
-            // Окно активно: прогресс от 1 до 1 (полный)
-            1f
         }
         else -> 1f
     }
@@ -229,7 +248,7 @@ fun EventBlock(
             if (progress != null) {
                 Spacer(modifier = Modifier.height(6.dp))
                 LinearProgressIndicator(
-                    progress = progress,
+                    progress = { progress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(3.dp),
