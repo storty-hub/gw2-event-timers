@@ -1,10 +1,163 @@
+package com.storty.gw2timers.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.storty.gw2timers.data.AppState
+import com.storty.gw2timers.data.GameEvent
+import com.storty.gw2timers.logic.EventLogic
+import java.util.Calendar
+
+@Composable
+fun EventDetailScreen(
+    event: GameEvent,
+    state: AppState,
+    onStateChange: (AppState) -> Unit,
+    onBack: () -> Unit
+) {
+    var showManualDialog by remember { mutableStateOf(false) }
+
+    val sortedCharacters = state.characters.sortedBy { character ->
+        if (EventLogic.didCharacterDoEventToday(state, character.id, event.id)) 1 else 0
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text("← Назад") }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(event.name, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(48.dp))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "CD: ${event.restartMinutes?.let { "$it мин" } ?: "—"}",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+        )
+        Text(
+            "\"окно\": ${event.windowMinutes?.let { "$it мин" } ?: "—"}",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Кто сделал:", fontWeight = FontWeight.Medium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (state.characters.isEmpty()) {
+            Text(
+                "Нет персонажей. Добавь их во вкладке «Персонажи».",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(sortedCharacters, key = { it.id }) { character ->
+                    val didToday = EventLogic.didCharacterDoEventToday(
+                        state, character.id, event.id
+                    )
+                    val isRepeated = EventLogic.isRepeatedForCharacter(
+                        state, character.id, event.id
+                    )
+                    val disabled = didToday || isRepeated
+                    val charColor = Color(character.color)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .alpha(if (disabled) 0.4f else 1f)
+                            .clickable(enabled = !disabled) {
+                                onStateChange(
+                                    EventLogic.markCompleted(state, event, character.id)
+                                )
+                                onBack()
+                            }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .height(40.dp)
+                                .background(charColor, RoundedCornerShape(2.dp))
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                character.name,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                character.className,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            )
+                            if (didToday) {
+                                Text(
+                                    "Уже делал сегодня",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                        if (isRepeated) {
+                            Text("⚠️", fontSize = 20.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { showManualDialog = true }
+        ) {
+            Text("✔ Выполнено без персонажа")
+        }
+    }
+
+    if (showManualDialog) {
+        ManualCompletionDialog(
+            event = event,
+            onDismiss = { showManualDialog = false },
+            onConfirm = { timestamp ->
+                onStateChange(
+                    EventLogic.markCompletedAt(state, event, null, timestamp)
+                )
+                showManualDialog = false
+                onBack()
+            }
+        )
+    }
+}
+
 @Composable
 fun ManualCompletionDialog(
     event: GameEvent,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit
 ) {
-    // Сейчас в ЛОКАЛЬНОМ времени телефона
     val nowLocal = Calendar.getInstance()
     var hour by remember { mutableStateOf(nowLocal.get(Calendar.HOUR_OF_DAY).toString()) }
     var minute by remember { mutableStateOf(nowLocal.get(Calendar.MINUTE).toString()) }
@@ -68,7 +221,6 @@ fun ManualCompletionDialog(
                         return@TextButton
                     }
 
-                    // Собираем время в ЛОКАЛЬНОМ часовом поясе
                     val cal = Calendar.getInstance()
                     cal.set(Calendar.HOUR_OF_DAY, h)
                     cal.set(Calendar.MINUTE, m)
@@ -77,10 +229,7 @@ fun ManualCompletionDialog(
 
                     val now = System.currentTimeMillis()
                     val timestamp: Long = when {
-                        // Время в будущем — ставим "сейчас"
                         cal.timeInMillis > now -> now
-                        // Если сейчас, скажем, 03:00, а введено 23:00 — значит это вчера
-                        // (введено раньше текущего времени, но кажется "недавним")
                         now - cal.timeInMillis > 23 * 60 * 60 * 1000L -> {
                             cal.add(Calendar.DAY_OF_YEAR, -1)
                             cal.timeInMillis
