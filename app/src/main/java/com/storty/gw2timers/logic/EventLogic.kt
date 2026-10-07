@@ -14,14 +14,12 @@ object EventLogic {
             .maxOfOrNull { it.timestamp }
     }
 
-    // Время, когда ивент снова доступен (null если не задан перезапуск)
     fun nextAvailableTime(state: AppState, event: GameEvent): Long? {
         val restart = event.restartMinutes ?: return null
         val last = lastCompletionTime(state, event.id) ?: return null
         return last + restart * 60_000L
     }
 
-    // Время окончания окна (null если окно не задано)
     fun windowEndTime(state: AppState, event: GameEvent): Long? {
         val restart = event.restartMinutes ?: return null
         val window = event.windowMinutes ?: return null
@@ -50,16 +48,17 @@ object EventLogic {
         return state.repeatedEventPerCharacter[characterId] == eventId
     }
 
-    fun markCompleted(
+    // Отметка с явной временной меткой (для "без персонажа")
+    fun markCompletedAt(
         state: AppState,
         event: GameEvent,
-        characterId: String?
+        characterId: String?,
+        timestamp: Long
     ): AppState {
-        val now = System.currentTimeMillis()
         val newCompletion = Completion(
             eventId = event.id,
             characterId = characterId,
-            timestamp = now
+            timestamp = timestamp
         )
 
         val newRepeated = state.repeatedEventPerCharacter.toMutableMap()
@@ -80,6 +79,15 @@ object EventLogic {
             lastEventPerCharacter = newLast,
             repeatedEventPerCharacter = newRepeated
         )
+    }
+
+    // Отметка "сейчас"
+    fun markCompleted(
+        state: AppState,
+        event: GameEvent,
+        characterId: String?
+    ): AppState {
+        return markCompletedAt(state, event, characterId, System.currentTimeMillis())
     }
 
     fun todayStartUtc(): Long {
