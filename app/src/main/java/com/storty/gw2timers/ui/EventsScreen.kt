@@ -305,11 +305,26 @@ fun EventBlock(
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Text(
-                statusText,
-                fontSize = statusSize,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-            )
+            val (badgeColor, badgeText) = when {
+    event.restartMinutes == null -> Color(0xFF9E9E9E) to statusText
+    nextTime == null -> Color(0xFF9E9E9E) to statusText
+    currentTime < nextTime -> Color(0xFF607D8B) to statusText
+    isWindowActive -> Color(0xFFFF9800) to statusText
+    else -> Color(0xFF4CAF50) to statusText
+}
+
+Box(
+    modifier = Modifier
+        .background(badgeColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+        .padding(horizontal = 6.dp, vertical = 2.dp)
+) {
+    Text(
+        badgeText,
+        fontSize = statusSize,
+        fontWeight = FontWeight.Medium,
+        color = badgeColor
+    )
+}
 
             if (settings.showProgressBar && cdProgress != null) {
                 Spacer(modifier = Modifier.height(if (compact) 3.dp else 6.dp))
