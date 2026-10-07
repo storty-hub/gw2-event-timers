@@ -16,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.storty.gw2timers.data.AppState
-import com.storty.gw2timers.data.Completion
 import com.storty.gw2timers.data.GameEvent
 import com.storty.gw2timers.logic.EventLogic
 import java.util.Calendar
@@ -30,6 +29,11 @@ fun EventDetailScreen(
     onBack: () -> Unit
 ) {
     var showManualDialog by remember { mutableStateOf(false) }
+
+    // Сортируем персонажей: сначала те, кто НЕ делал сегодня, потом — кто делал
+    val sortedCharacters = state.characters.sortedBy { character ->
+        if (EventLogic.didCharacterDoEventToday(state, character.id, event.id)) 1 else 0
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -66,7 +70,7 @@ fun EventDetailScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(state.characters, key = { it.id }) { character ->
+                items(sortedCharacters, key = { it.id }) { character ->
                     val didToday = EventLogic.didCharacterDoEventToday(
                         state, character.id, event.id
                     )
@@ -140,12 +144,9 @@ fun EventDetailScreen(
             event = event,
             onDismiss = { showManualDialog = false },
             onConfirm = { timestamp ->
-                val newCompletion = Completion(
-                    eventId = event.id,
-                    characterId = null,
-                    timestamp = timestamp
+                onStateChange(
+                    EventLogic.markCompletedAt(state, event, null, timestamp)
                 )
-                onStateChange(state.copy(completions = state.completions + newCompletion))
                 showManualDialog = false
                 onBack()
             }
@@ -170,7 +171,7 @@ fun ManualCompletionDialog(
         text = {
             Column {
                 Text(
-                    "Укажи время в UTC (игровое время GW2)",
+                    "Укажи время в UTC (игровое время GW2). Если сейчас — оставь как есть.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
@@ -221,10 +222,13 @@ fun ManualCompletionDialog(
                     cal.set(Calendar.MINUTE, m)
                     cal.set(Calendar.SECOND, 0)
                     cal.set(Calendar.MILLISECOND, 0)
-                    if (cal.timeInMillis > System.currentTimeMillis()) {
-                        cal.add(Calendar.DAY_OF_YEAR, -1)
+                    // Если время в будущем — ставим "сейчас"
+                    val timestamp = if (cal.timeInMillis > System.currentTimeMillis()) {
+                        System.currentTimeMillis()
+                    } else {
+                        cal.timeInMillis
                     }
-                    onConfirm(cal.timeInMillis)
+                    onConfirm(timestamp)
                 }
             ) { Text("ОК") }
         },
