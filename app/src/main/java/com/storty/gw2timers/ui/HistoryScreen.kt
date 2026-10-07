@@ -230,5 +230,6 @@ fun FilterDropdown(
 
 fun formatDateTime(millis: Long): String {
     val sdf = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
+    sdf.timeZone = java.util.TimeZone.getDefault()  // локальное время телефона
     return sdf.format(Date(millis))
 }
