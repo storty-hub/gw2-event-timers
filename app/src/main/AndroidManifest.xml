@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="GW2 Timers"
+        android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.GW2Timers">
         <activity
