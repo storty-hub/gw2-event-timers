@@ -28,11 +28,11 @@ enum class ThemeMode {
 }
 
 enum class SortMode {
-    ADDED,          // по добавлению
-    ALPHABETICAL,   // по алфавиту
-    CD_ASC,         // по возрастанию CD
-    CD_DESC,        // по убыванию CD
-    SMART           // умная: готовые → окно → скоро готовые
+    ADDED,
+    ALPHABETICAL,
+    CD_ASC,
+    CD_DESC,
+    SMART
 }
 
 data class AppSettings(
@@ -48,8 +48,6 @@ data class AppState(
     val events: List<GameEvent> = emptyList(),
     val characters: List<Character> = emptyList(),
     val completions: List<Completion> = emptyList(),
-    val lastEventPerCharacter: Map<String, String> = emptyMap(),
-    val repeatedEventPerCharacter: Map<String, String> = emptyMap(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val settings: AppSettings = AppSettings()
 )
