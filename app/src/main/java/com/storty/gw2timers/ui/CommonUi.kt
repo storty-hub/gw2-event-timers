@@ -163,7 +163,8 @@ fun formatDuration(millis: Long): String {
     return if (hours > 0) "${hours}ч ${minutes}м" else "${minutes}м"
 }
 
-// Единый формат: 1с назад, 23с назад, 5м назад, 1ч 15м назад, 2д 3ч назад
+// ===== Форматирование "как давно" =====
+// 5с → "5с назад", 23м → "23м назад", 1ч 15м → "1ч 15м назад", 2д 3ч → "2д 3ч назад"
 fun formatAgo(millis: Long): String {
     if (millis < 0) return "0с назад"
 
