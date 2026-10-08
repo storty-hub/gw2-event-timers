@@ -237,7 +237,6 @@ fun EventBlock(
     val isWindowActive = EventLogic.isWindowActive(state, event)
     val eventColor = Color(event.color)
 
-    // Время последнего выполнения (для ивентов без CD)
     val lastTime = EventLogic.lastCompletionTime(state, event.id)
     val timeSinceLast = lastTime?.let { currentTime - it }
 
@@ -246,12 +245,11 @@ fun EventBlock(
     val windowProgress: Float?
 
     when {
-        // Ивент без CD — показываем "как давно выполняли"
         event.restartMinutes == null -> {
             statusText = if (lastTime == null) {
                 "не выполнялся"
             } else {
-                "${formatAgo(timeSinceLast!!)} назад"
+                formatAgo(timeSinceLast!!)
             }
             cdProgress = null
             windowProgress = null
