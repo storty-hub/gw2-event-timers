@@ -67,7 +67,6 @@ fun CharacterDetailScreen(
         }
     }
 
-    // Выполненные сегодня — вниз
     val displayedEvents = sortedEvents.sortedBy { event ->
         if (EventLogic.didCharacterDoEventToday(state, character.id, event.id)) 1 else 0
     }
@@ -205,11 +204,13 @@ fun CharacterEventBlock(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (grayed) 0.35f else 1f)
-            .clickable(enabled = !disabled) { onClick() }
+            .then(
+                if (disabled) Modifier
+                else Modifier.clickable { onClick() }
+            )
             .padding(vertical = rowPad),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Цветная полоска: красная при ⚠️, иначе — цвет ивента
         Box(
             modifier = Modifier
                 .width(4.dp)
@@ -237,7 +238,7 @@ fun CharacterEventBlock(
 
             if (isRepeated) {
                 Text(
-                    "Делал 2 раза подряд — награды не будет",
+                    "🚫 Недоступно · 2 раза подряд",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFFFF5722)
@@ -256,7 +257,7 @@ fun CharacterEventBlock(
                 )
             }
 
-            if (settings.showProgressBar && cdProgress != null && !didToday) {
+            if (settings.showProgressBar && cdProgress != null && !didToday && !isRepeated) {
                 Spacer(modifier = Modifier.height(if (compact) 3.dp else 6.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(3.dp)) {
                     LinearProgressIndicator(
