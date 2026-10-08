@@ -210,11 +210,14 @@ fun CharacterEventBlock(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(rowHeight)
-                .background(blockColor, RoundedCornerShape(2.dp))
+    modifier = Modifier
+        .width(4.dp)
+        .height(rowHeight)
+        .background(
+            if (isRepeated) Color(0xFFFF5722) else blockColor,
+            RoundedCornerShape(2.dp)
         )
+)
         Spacer(modifier = Modifier.width(if (compact) 6.dp else 10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
