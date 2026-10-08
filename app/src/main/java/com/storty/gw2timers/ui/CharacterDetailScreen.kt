@@ -209,18 +209,19 @@ fun CharacterEventBlock(
             .padding(vertical = rowPad),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Цветная полоска: красная при ⚠️, иначе — цвет ивента
         Box(
-    modifier = Modifier
-        .width(4.dp)
-        .height(rowHeight)
-        .background(
-            if (isRepeated) Color(0xFFFF5722) else blockColor,
-            RoundedCornerShape(2.dp)
+            modifier = Modifier
+                .width(4.dp)
+                .height(if (isRepeated) rowHeight + 8.dp else rowHeight)
+                .background(
+                    if (isRepeated) Color(0xFFFF5722) else blockColor,
+                    RoundedCornerShape(2.dp)
+                )
         )
-)
         Spacer(modifier = Modifier.width(if (compact) 6.dp else 10.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     event.name,
@@ -254,7 +255,6 @@ fun CharacterEventBlock(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
             }
-            ...
 
             if (settings.showProgressBar && cdProgress != null && !didToday) {
                 Spacer(modifier = Modifier.height(if (compact) 3.dp else 6.dp))
