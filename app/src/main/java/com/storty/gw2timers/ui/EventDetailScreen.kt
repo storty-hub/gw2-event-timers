@@ -29,17 +29,13 @@ fun EventDetailScreen(
 ) {
     var showManualDialog by remember { mutableStateOf(false) }
 
-    // Сортируем персонажей:
-    // 1) доступные (не делал сегодня и не ⚠️) — наверх
-    // 2) ⚠️ (2 раза подряд) — в середине, видны, но заблокированы
-    // 3) уже сделал сегодня — вниз
     val sortedCharacters = state.characters.sortedBy { character ->
         val didToday = EventLogic.didCharacterDoEventToday(state, character.id, event.id)
         val isRepeated = EventLogic.isRepeatedForCharacter(state, character.id, event.id)
         when {
-            isRepeated -> 1     // ⚠️ — в середину
-            didToday -> 2       // сделал сегодня — вниз
-            else -> 0           // доступные — наверх
+            isRepeated -> 1
+            didToday -> 2
+            else -> 0
         }
     }
 
@@ -92,12 +88,15 @@ fun EventDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .alpha(if (disabled) 0.5f else 1f)
-                            .clickable(enabled = !disabled) {
-                                onStateChange(
-                                    EventLogic.markCompleted(state, event, character.id)
-                                )
-                                onBack()
-                            }
+                            .then(
+                                if (disabled) Modifier
+                                else Modifier.clickable {
+                                    onStateChange(
+                                        EventLogic.markCompleted(state, event, character.id)
+                                    )
+                                    onBack()
+                                }
+                            )
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -122,7 +121,7 @@ fun EventDetailScreen(
                                 )
                                 if (isRepeated) {
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("⚠️", fontSize = 18.sp)
+                                    Text("⚠️", fontSize = 16.sp)
                                 }
                             }
                             Text(
@@ -132,7 +131,7 @@ fun EventDetailScreen(
                             )
                             if (isRepeated) {
                                 Text(
-                                    "Делал 2 раза подряд — награды не будет",
+                                    "2 раза подряд — награды не будет",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFFFF5722)
