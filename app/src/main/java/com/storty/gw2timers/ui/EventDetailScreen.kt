@@ -29,8 +29,18 @@ fun EventDetailScreen(
 ) {
     var showManualDialog by remember { mutableStateOf(false) }
 
+    // Сортируем персонажей:
+    // 1) доступные (не делал сегодня и не ⚠️) — наверх
+    // 2) ⚠️ (2 раза подряд) — в середине, видны, но заблокированы
+    // 3) уже сделал сегодня — вниз
     val sortedCharacters = state.characters.sortedBy { character ->
-        if (EventLogic.didCharacterDoEventToday(state, character.id, event.id)) 1 else 0
+        val didToday = EventLogic.didCharacterDoEventToday(state, character.id, event.id)
+        val isRepeated = EventLogic.isRepeatedForCharacter(state, character.id, event.id)
+        when {
+            isRepeated -> 1     // ⚠️ — в середину
+            didToday -> 2       // сделал сегодня — вниз
+            else -> 0           // доступные — наверх
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -81,7 +91,7 @@ fun EventDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .alpha(if (disabled) 0.4f else 1f)
+                            .alpha(if (disabled) 0.5f else 1f)
                             .clickable(enabled = !disabled) {
                                 onStateChange(
                                     EventLogic.markCompleted(state, event, character.id)
@@ -94,33 +104,46 @@ fun EventDetailScreen(
                         Box(
                             modifier = Modifier
                                 .width(4.dp)
-                                .height(40.dp)
-                                .background(charColor, RoundedCornerShape(2.dp))
+                                .height(if (isRepeated) 56.dp else 40.dp)
+                                .background(
+                                    if (isRepeated) Color(0xFFFF5722) else charColor,
+                                    RoundedCornerShape(2.dp)
+                                )
                         )
                         Spacer(modifier = Modifier.width(10.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                character.name,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    character.name,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                if (isRepeated) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("⚠️", fontSize = 18.sp)
+                                }
+                            }
                             Text(
                                 character.className,
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                             )
-                            if (didToday) {
+                            if (isRepeated) {
+                                Text(
+                                    "Делал 2 раза подряд — награды не будет",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFFFF5722)
+                                )
+                            } else if (didToday) {
                                 Text(
                                     "Уже делал сегодня",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                                 )
                             }
-                        }
-                        if (isRepeated) {
-                            Text("⚠️", fontSize = 20.sp)
                         }
                     }
                 }
