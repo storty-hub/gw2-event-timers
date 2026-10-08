@@ -217,7 +217,7 @@ fun CharacterEventBlock(
         )
         Spacer(modifier = Modifier.width(if (compact) 6.dp else 10.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     event.name,
@@ -227,14 +227,31 @@ fun CharacterEventBlock(
                 )
                 if (isRepeated) {
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("⚠️", fontSize = 14.sp)
+                    Text("⚠️", fontSize = 16.sp)
                 }
             }
-            Text(
-                if (didToday) "уже сделано сегодня" else statusText,
-                fontSize = statusSize,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-            )
+
+            if (isRepeated) {
+                Text(
+                    "Делал 2 раза подряд — награды не будет",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFFFF5722)
+                )
+            } else if (didToday) {
+                Text(
+                    "Уже делал сегодня",
+                    fontSize = statusSize,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
+            } else {
+                Text(
+                    statusText,
+                    fontSize = statusSize,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
+            }
+            ...
 
             if (settings.showProgressBar && cdProgress != null && !didToday) {
                 Spacer(modifier = Modifier.height(if (compact) 3.dp else 6.dp))
