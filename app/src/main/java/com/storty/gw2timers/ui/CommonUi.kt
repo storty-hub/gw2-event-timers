@@ -162,3 +162,17 @@ fun formatDuration(millis: Long): String {
     val minutes = totalMinutes % 60
     return if (hours > 0) "${hours}ч ${minutes}м" else "${minutes}м"
 }
+
+// Форматирование "как давно": 30 сек → "только что", 5 мин → "5м", 2ч 15м → "2ч 15м"
+fun formatAgo(millis: Long): String {
+    val totalMinutes = (millis / 60_000).toInt()
+    return when {
+        totalMinutes < 1 -> "только что"
+        totalMinutes < 60 -> "${totalMinutes}м"
+        else -> {
+            val hours = totalMinutes / 60
+            val minutes = totalMinutes % 60
+            if (minutes == 0) "${hours}ч" else "${hours}ч ${minutes}м"
+        }
+    }
+}
