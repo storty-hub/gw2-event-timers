@@ -237,16 +237,29 @@ fun EventBlock(
     val isWindowActive = EventLogic.isWindowActive(state, event)
     val eventColor = Color(event.color)
 
+    // Время последнего выполнения (для ивентов без CD)
+    val lastTime = EventLogic.lastCompletionTime(state, event.id)
+    val timeSinceLast = lastTime?.let { currentTime - it }
+
     val statusText: String
     val cdProgress: Float?
     val windowProgress: Float?
 
     when {
+        // Ивент без CD — показываем "как давно выполняли"
         event.restartMinutes == null -> {
-            statusText = "—"; cdProgress = null; windowProgress = null
+            statusText = if (lastTime == null) {
+                "не выполнялся"
+            } else {
+                "${formatAgo(timeSinceLast!!)} назад"
+            }
+            cdProgress = null
+            windowProgress = null
         }
         nextTime == null -> {
-            statusText = "не выполнялся"; cdProgress = null; windowProgress = null
+            statusText = "не выполнялся"
+            cdProgress = null
+            windowProgress = null
         }
         currentTime < nextTime -> {
             statusText = "через ${formatDuration(nextTime - currentTime)}"
@@ -306,7 +319,6 @@ fun EventBlock(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            // Цветной бейдж статуса
             val (badgeColor, badgeText) = when {
                 event.restartMinutes == null -> Color(0xFF9E9E9E) to statusText
                 nextTime == null -> Color(0xFF9E9E9E) to statusText
