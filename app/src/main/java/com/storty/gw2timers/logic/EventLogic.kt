@@ -44,11 +44,19 @@ object EventLogic {
         }
     }
 
+    // НОВАЯ ЛОГИКА: смотрим последние 2 записи этого персонажа
+    // Если ОБЕ — про eventId, ставим предупреждение
     fun isRepeatedForCharacter(state: AppState, characterId: String, eventId: String): Boolean {
-        return state.repeatedEventPerCharacter[characterId] == eventId
+        val lastTwo = state.completions
+            .filter { it.characterId == characterId }
+            .sortedByDescending { it.timestamp }
+            .take(2)
+
+        if (lastTwo.size < 2) return false
+
+        return lastTwo.all { it.eventId == eventId }
     }
 
-    // Отметка с явной временной меткой (для "без персонажа")
     fun markCompletedAt(
         state: AppState,
         event: GameEvent,
@@ -60,28 +68,9 @@ object EventLogic {
             characterId = characterId,
             timestamp = timestamp
         )
-
-        val newRepeated = state.repeatedEventPerCharacter.toMutableMap()
-        val newLast = state.lastEventPerCharacter.toMutableMap()
-
-        if (characterId != null) {
-            val lastEvent = state.lastEventPerCharacter[characterId]
-            if (lastEvent == event.id) {
-                newRepeated[characterId] = event.id
-            } else {
-                newRepeated.remove(characterId)
-            }
-            newLast[characterId] = event.id
-        }
-
-        return state.copy(
-            completions = state.completions + newCompletion,
-            lastEventPerCharacter = newLast,
-            repeatedEventPerCharacter = newRepeated
-        )
+        return state.copy(completions = state.completions + newCompletion)
     }
 
-    // Отметка "сейчас"
     fun markCompleted(
         state: AppState,
         event: GameEvent,
